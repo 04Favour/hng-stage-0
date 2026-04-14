@@ -7,7 +7,7 @@ export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Get('/classify')
-  getHello(@Query() name: NameDto) {
-    return this.appService.getHello(name);
+  clasify(@Query() name: NameDto) {
+    return this.appService.classify(name);
   }
 }

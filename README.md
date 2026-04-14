@@ -1,23 +1,26 @@
 # Gender Classification API
 
-A NestJS REST API that predicts the gender of a given name using the [Genderize.io](https://genderize.io) external service. It returns the predicted gender, probability score, sample size, and a confidence flag.
+A lightweight REST API built with NestJS that classifies names by gender using the [Genderize.io](https://genderize.io) API. Returns enriched, processed responses with confidence scoring and full input validation.
 
 ---
 
 ## Live Demo
 
+**Base URL:** `https://hng-stage-0-ydsm.vercel.app`
+
 ```
-https://hng-stage-0-ydsm.vercel.app/api/classify/?name=favour
+GET /api/classify?name=favour
 ```
 
 ---
 
 ## Tech Stack
 
-- [NestJS](https://nestjs.com/) — Node.js framework
-- [class-validator](https://github.com/typestack/class-validator) — DTO validation
-- [Genderize.io API](https://genderize.io/) — External gender prediction service
-- Deployed on [Vercel](https://vercel.com/)
+- **Framework:** NestJS (TypeScript)
+- **Runtime:** Node.js
+- **Validation:** class-validator + class-transformer
+- **External API:** Genderize.io
+- **Deployment:** Vercel
 
 ---
 
@@ -26,25 +29,28 @@ https://hng-stage-0-ydsm.vercel.app/api/classify/?name=favour
 ### Prerequisites
 
 - Node.js >= 18
-- pnpm
+- npm or yarn
 
 ### Installation
 
 ```bash
-git clone <your-repo-url>
-cd <project-folder>
-pnpm install
+git clone https://github.com/your-username/your-repo-name.git
+cd your-repo-name
+npm install
 ```
 
-### Running the App
+### Running Locally
 
 ```bash
-# Development (watch mode)
-pnpm run start:dev
+# development
+npm run start:dev
 
+# production
+npm run build
+npm run start:prod
 ```
 
-The server starts on `http://localhost:3009` by default.
+The server starts on `http://localhost:3009` by default. Override with the `PORT` environment variable.
 
 ---
 
@@ -52,15 +58,15 @@ The server starts on `http://localhost:3009` by default.
 
 ### `GET /api/classify`
 
-Predicts the gender of a given first name.
+Classifies a name by gender with enriched metadata.
 
 #### Query Parameters
 
-| Parameter | Type   | Required | Description                        |
-|-----------|--------|----------|------------------------------------|
-| `name`    | string | Yes      | A name containing only letters (a–z, A–Z) |
+| Parameter | Type   | Required | Description        |
+|-----------|--------|----------|--------------------|
+| `name`    | string | Yes      | The name to classify |
 
-#### Success Response — `200 OK`
+#### Success Response `200`
 
 ```json
 {
@@ -68,54 +74,43 @@ Predicts the gender of a given first name.
   "data": {
     "name": "favour",
     "gender": "female",
-    "probability": 0.97,
-    "sample_size": 964,
+    "probability": 0.84,
+    "sample_size": 312,
     "is_confident": true,
-    "processed_at": "2026-04-10T17:38:03.000Z"
+    "processed_at": "2026-04-14T10:32:00.000Z"
   }
 }
 ```
 
-| Field          | Type    | Description                                                                 |
-|----------------|---------|-----------------------------------------------------------------------------|
-| `name`         | string  | The name that was queried                                                   |
-| `gender`       | string  | Predicted gender: `"male"` or `"female"`                                    |
-| `probability`  | number  | Confidence score from Genderize.io (0–1)                                    |
-| `sample_size`  | number  | Number of records used to make the prediction                               |
-| `is_confident` | boolean | `true` if probability ≥ 0.7 **and** sample size ≥ 100, otherwise `false`   |
-| `processed_at` | string  | ISO 8601 timestamp of when the request was processed                        |
+#### Field Descriptions
 
-#### Error Responses
-
-| Status | Scenario                                          | Message                                      |
-|--------|---------------------------------------------------|----------------------------------------------|
-| `400`  | `name` query param is missing or empty            | `Please provide name`                        |
-| `400`  | `name` contains non-alphabetic characters         | `Name must be string`                        |
-| `400`  | Genderize.io has no data for the provided name    | `No prediction available for the provided name` |
-| `502`  | Genderize.io is unreachable                       | `The external service is currently unreachable` |
-| `502`  | Unexpected error during processing                | `Unable to continue with your request`       |
-
-#### Error Response Shape
-
-```json
-{
-  "message": "No prediction available for the provided name",
-  "error": "Bad Request",
-  "statusCode": 400
-}
-```
+| Field | Description |
+|-------|-------------|
+| `gender` | `"male"` or `"female"` |
+| `probability` | Confidence score from Genderize (0–1) |
+| `sample_size` | Number of data points Genderize used |
+| `is_confident` | `true` when `probability >= 0.7` AND `sample_size >= 100` |
+| `processed_at` | UTC ISO 8601 timestamp generated per request |
 
 ---
 
-## Confidence Logic
+#### Error Responses
 
-The `is_confident` flag is determined by the following rule:
+All errors follow a consistent shape:
 
+```json
+{
+  "status": "error",
+  "message": "<description>"
+}
 ```
-is_confident = (probability >= 0.7) AND (sample_size >= 100)
-```
 
-This means a prediction is only considered reliable if Genderize.io is at least 70% confident **and** based on a reasonably large sample.
+| Status | Scenario |
+|--------|----------|
+| `400`  | Missing or empty `name` parameter |
+| `400`  | Name has no gender prediction (e.g. gibberish input) |
+| `422`  | `name` is not a string |
+| `502`  | Genderize.io is unreachable |
 
 ---
 
@@ -123,24 +118,40 @@ This means a prediction is only considered reliable if Genderize.io is at least 
 
 ```
 src/
-├── app.controller.ts   # Route handler — GET /api/classify
-├── app.service.ts      # Business logic and Genderize.io integration
-├── app.module.ts       # NestJS module wiring
-├── classify.dto.ts     # Input validation (DTO)
-└── main.ts             # App entry point
+├── main.ts                   # Bootstrap, CORS, global pipes & filters
+├── app.module.ts
+├── app.controller.ts         # GET /api/classify
+├── app.service.ts            # Business logic & Genderize integration
+├── classify.dto.ts           # Input validation (IsString, IsNotEmpty)
+└── http-exception.filter.ts  # Unified { status, message } error format
 ```
 
 ---
 
-## Example Requests
+## Key Design Decisions
 
-```bash
-# Valid name
-curl "http://localhost:3009/api/classify?name=james"
+**Custom exception filter** — NestJS's default error shape (`{ statusCode, message, error }`) is replaced globally so every error — whether thrown by validation or service logic — returns the same `{ status: "error", message }` structure.
 
-# Missing name — returns 400
-curl "http://localhost:3009/api/classify"
+**`exceptionFactory` on ValidationPipe** — distinguishes between a missing name (→ `400`) and a type mismatch (→ `422`) at the pipe level, before the request reaches the controller.
 
-# Non-alphabetic name — returns 400
-curl "http://localhost:3009/api/classify?name=j4mes"
+**`encodeURIComponent` on the query** — prevents malformed URLs for names with special characters, spaces, or accents.
+
+**No hardcoded timestamps** — `processed_at` is generated fresh on every request via `new Date().toISOString()`.
+
+---
+
+## CORS
+
+All responses include:
+
 ```
+Access-Control-Allow-Origin: *
+```
+
+Configured via `app.enableCors({ origin: '*' })` in `main.ts`.
+
+---
+
+## License
+
+MIT
