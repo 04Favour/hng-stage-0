@@ -32,7 +32,10 @@ export class AppService {
       const { gender, probability, count } = data;
 
       if (gender === null || count === 0) {
-        throw new BadRequestException('No prediction available for the provided name');
+        return {
+          status: 'error',
+          message: 'No prediction available for the provided name',
+        };
       }
 
       const sample_size: number = count;
