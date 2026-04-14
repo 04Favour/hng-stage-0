@@ -29,25 +29,25 @@ GET /api/classify?name=favour
 ### Prerequisites
 
 - Node.js >= 18
-- npm or yarn
+- npm or yarn or pnpm
 
 ### Installation
 
 ```bash
 git clone https://github.com/your-username/your-repo-name.git
 cd your-repo-name
-npm install
+pnpm install
 ```
 
 ### Running Locally
 
 ```bash
 # development
-npm run start:dev
+pnpm run start:dev
 
 # production
-npm run build
-npm run start:prod
+pnpm run build
+pnpm run start:prod
 ```
 
 The server starts on `http://localhost:3009` by default. Override with the `PORT` environment variable.
